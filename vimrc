@@ -1,9 +1,13 @@
+" not old vi compat mode
 set nocp
+" use pathogen to add things from ~/.vim/bundle and ~/.vim/autoload
 execute pathogen#infect()
+
 filetype on
 filetype plugin on
 filetype indent on
-syntax enable
+syntax on
+
 set ruler
 set number
 set autoindent
@@ -35,8 +39,9 @@ if has('persistent_undo')
 endif     
 
 
-
+" regexes match { as literal {, groupings need escaping
 set magic
+" wild matching mode 
 set wildmode=longest:full,full " enables bash-like autocomplete for commands
 
 " in case I want to disable folding
@@ -68,19 +73,28 @@ set shiftround                    "Indent/outdent to nearest tabstop
 " END from PBP - trying out
 
 
-" say what? are these?
+" when splitting windows put new below
 set splitbelow
+" when splitting windows put new to the right
 set splitright
+" show search matches while typing
 set incsearch
+" When there is a previous search pattern, highlight all its matches
 set hlsearch
 
 let Tlist_Ctags_Cmd = '/opt/pkg/bin/exctags'
 
 if has('gui_running')
   set guioptions-=T  " no toolbar
-  set transparency=3
+  set transparency=4
 endif
 
+set guifont=Source\ Code\ Pro:h14
+
+" to enable nerdtree on open
+" autocmd vimenter * NERDTree
+
+" solarized colors
 set background=dark
 let g:solarized_termcolors=   256
 let g:solarized_termtrans =   1
@@ -121,8 +135,30 @@ set statusline+=\ [Progress:\ %02p%%]          " cursor percent of way through f
 set statusline+=%3*                            " use User3 colorscheme
 set statusline+=\ [Length=%L]                  " File length in line
 
+" syntastic settings
+set statusline+=%#warningmsg#
+set statusline+=%{SyntasticStatuslineFlag()}
+set statusline+=%*
 
-" no more searched landing on the bottom, center that stuff in my window!
+let syntastic_always_populate_loc_list = 1
+let syntastic_auto_loc_list = 1
+let syntastic_check_on_open = 1
+let syntastic_check_on_wq = 0
+let syntastic_sh_shellcheck_args = '-x'
+let syntastic_markdown_mdl_exec = "markdownlint"
+"let syntastic_markdown_mdl_args = "--config .markdownlintrc"
+
+function! FindConfig(prefix, what, where)
+    let cfg = findfile(a:what, escape(a:where, ' ') . ';')
+    return cfg !=# '' ? ' ' . a:prefix . ' ' . shellescape(cfg) : ''
+endfunction
+
+autocmd FileType markdown let g:syntastic_markdown_mdl_args =
+    \ get(g:, 'syntastic_markdown_mdl_args', '') .
+    \ FindConfig('--config', '.markdownlintrc', expand('<afile>:p:h', 1))
+
+
+" no more search matches landing on the bottom, center matching line in my window
 nnoremap n nzz
 nnoremap } }zz
 

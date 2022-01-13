@@ -1,0 +1,105 @@
+# Workaround bug in Xcode 5.1 for Python Packages
+export CFLAGS=-Qunused-arguments
+export CPPFLAGS=-Qunused-arguments
+
+JOYENT_USER_ID='michaeljhicks'
+SSH_KEY="$HOME/.ssh/id_ecdsa"
+
+JOYENT_KEY_ID_SHA256=$(ssh-keygen -l -f "$SSH_KEY" | awk '{print $2}' | tr -d '\n')
+JOYENT_KEY_ID_MD5=$(ssh-keygen -l -f "$SSH_KEY" -E md5 | awk '{print $2}' | cut -d : -f 2-)
+
+# Joyent SDC
+export SDC_URL='https://cloudapi.iad001.triton.zone'
+export SDC_ACCOUNT="$JOYENT_USER_ID"
+export SDC_KEY_ID="$JOYENT_KEY_ID_SHA256"
+
+# Joyent Manta
+export MANTA_URL='https://iad.manta.joyent.com'
+export MANTA_USER="$JOYENT_USER_ID"
+export MANTA_KEY_ID="$JOYENT_KEY_ID_SHA256"
+export THOTH_USER='thoth'
+
+# java client options https://github.com/joyent/java-manta
+export MANTA_CLIENT_ENCRYPTION_KEY_ID=junk
+#export MANTA_CLIENT_ENCRYPTION_KEY_ID=java-cse-aes256.key
+export MANTA_CLIENT_ENCRYPTION=true
+export MANTA_METRIC_REPORTER_MODE=JMX
+export MANTA_ENCRYPTION_KEY_PATH=/Users/michaelhicks/java-cse-aes256.key
+export MANTA_ENCRYPTION_ALGORITHM=AES256/CTR/NoPadding
+export MANTA_KEY_PATH=/Users/michaelhicks/.ssh/id_ecdsa
+
+
+# see https://apidocs.joyent.com/manta/api.html
+function manta {
+    local alg=ecdsa-sha256
+    local keyId="/$MANTA_USER/keys/$JOYENT_KEY_ID_MD5"
+    local now
+    now="$(date -u "+%a, %d %h %Y %H:%M:%S GMT")"
+    local sig
+    sig="$(echo -n "date: $now" | \
+                openssl dgst -sha256 -sign "$SSH_KEY" | \
+                openssl enc -e -a | tr -d '\n')"
+ 
+    curl "${MANTA_URL}$@" -H "date: $now"  \
+             -H "Authorization: Signature keyId=\"$keyId\",algorithm=\"$alg\",signature=\"$sig\""
+}
+
+function java_manta_test() {
+    local num_of_passes="$1"
+    sleep_interval=10
+
+    tmp_dir="$(mktemp -d "$HOME/java_manta_test_temp.XXXX")"
+    test_filename="java_manta_client_test-$((RANDOM%1000))"
+    upload_source="$tmp_dir/$test_filename"
+    upload_location=/$MANTA_USER/stor/jmc_test.txt
+    download_dest="$tmp_dir/${test_filename}-download"
+    java_manta_jar="$HOME/bin/java-manta-cli-3.5.0-jar-with-dependencies.jar"
+
+    printf 'Performing JAVA client test of Manta at %s\n' "$MANTA_URL"
+    for (( pass=1; pass<=num_of_passes; pass++))
+    do
+        printf 'Starting pass %d\n' "$pass"
+        printf 'creating test file at %s\n' "$upload_source"
+        printf 'java manta test file contents + random pad: %s\n' "$((RANDOM%1000))" >"$upload_source"
+
+        printf '\nencrypting and uploading file to %s\n' "$upload_location"
+        java -jar "$java_manta_jar" put-file -cse "$upload_source" "$upload_location" 2>/dev/null
+        ret="$?"
+        if (( ret ))
+        then 
+            printf 'FAIL - file put failed\n'
+        else
+            printf 'SUCCESS - file upload succeeded\n'
+        fi
+
+        printf '\ngetting object info for %s\n' "$upload_location"
+        java -jar "$java_manta_jar" object-info "$upload_location" 2>/dev/null
+        ret="$?"
+        if (( ret ))
+        then 
+            printf 'FAIL - getting uploaded object info failed\n'
+        else
+            printf 'SUCCESS - getting uploaded object info succeeded\n'
+        fi
+
+        printf '\ndownloading object %s to %s\n' "$upload_location" "$download_dest"
+        java  -Dmanta.metric_reporter.output_interval=1 -jar "$java_manta_jar" get-file "$upload_location" -o "$download_dest"  2>/dev/null
+        diff "$upload_source" "$download_dest"
+        ret="$?"
+        if (( ret ))
+        then 
+            printf 'FAIL - file downloaded does not match what was uploaded\n'
+            cat "$upload_source"
+            cat "$download_dest"
+        else
+            printf 'SUCCESS - file dowloaded matches what was uploaded\n'
+        fi
+
+        if (( pass == num_of_passes ))
+        then 
+            continue
+        fi
+        printf '\nsleeping %d seconds before next pass\n\n\n' "$sleep_interval"
+        countdown "$sleep_interval"
+    done
+}
