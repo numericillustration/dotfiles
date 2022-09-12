@@ -2,7 +2,8 @@
 
 # check all these paths for existence and add to PATH
 
-export JAVA_HOME=$(/usr/libexec/java_home)
+# shellcheck disable=SC2155
+export JAVA_HOME="$(/usr/libexec/java_home)"
 ###  expands to current installed java
 ###  🂁  /usr/libexec/java_home
 ###  /Library/Java/JavaVirtualMachines/jdk-15.0.2.jdk/Contents/Home
@@ -46,22 +47,22 @@ esac
 # set a fancy prompt using tput to fetch the color codes rather than manually encoding them
 if [[ $(tput colors) -ge 256 ]] 2>/dev/null
 then
-    BASE03=$(tput setaf 234)
-    BASE02=$(tput setaf 235)
-    BASE01=$(tput setaf 240)
-    BASE00=$(tput setaf 241)
-    BASE0=$(tput setaf 244)
-    BASE1=$(tput setaf 245)
-    BASE2=$(tput setaf 254)
-    BASE3=$(tput setaf 230)
-    YELLOW=$(tput setaf 136)
+#    BASE03=$(tput setaf 234)
+#    BASE02=$(tput setaf 235)
+#    BASE01=$(tput setaf 240)
+#    BASE00=$(tput setaf 241)
+#    BASE0=$(tput setaf 244)
+#    BASE1=$(tput setaf 245)
+#    BASE2=$(tput setaf 254)
+#    BASE3=$(tput setaf 230)
+#    YELLOW=$(tput setaf 136)
     ORANGE=$(tput setaf 166)
-    RED=$(tput setaf 160)
-    MAGENTA=$(tput setaf 125)
+#    RED=$(tput setaf 160)
+#    MAGENTA=$(tput setaf 125)
     VIOLET=$(tput setaf 61)
-    BLUE=$(tput setaf 33)
-    CYAN=$(tput setaf 37)
-    GREEN=$(tput setaf 64)
+#    BLUE=$(tput setaf 33)
+#    CYAN=$(tput setaf 37)
+#    GREEN=$(tput setaf 64)
     #TERMINUS=⇒
     
     #TERMINUS='♧'
@@ -71,28 +72,30 @@ then
     # do you want to build a snowman
     #TERMINUS='⛄️'
  else
-    BASE03=$(tput setaf 8)
-    BASE02=$(tput setaf 0)
-    BASE01=$(tput setaf 10)
-    BASE00=$(tput setaf 11)
-    BASE0=$(tput setaf 12)
-    BASE1=$(tput setaf 14)
-    BASE2=$(tput setaf 7)
-    BASE3=$(tput setaf 15)
-    YELLOW=$(tput setaf 3)
+#     BASE03=$(tput setaf 8)
+#     BASE02=$(tput setaf 0)
+#     BASE01=$(tput setaf 10)
+#     BASE00=$(tput setaf 11)
+#     BASE0=$(tput setaf 12)
+#     BASE1=$(tput setaf 14)
+#     BASE2=$(tput setaf 7)
+#     BASE3=$(tput setaf 15)
+#     YELLOW=$(tput setaf 3)
     ORANGE=$(tput setaf 9)
-    RED=$(tput setaf 1)
-    MAGENTA=$(tput setaf 5)
+#     RED=$(tput setaf 1)
+#     MAGENTA=$(tput setaf 5)
     VIOLET=$(tput setaf 13)
-    BLUE=$(tput setaf 4)
-    CYAN=$(tput setaf 6)
-    GREEN=$(tput setaf 2)
+#     BLUE=$(tput setaf 4)
+#     CYAN=$(tput setaf 6)
+#     GREEN=$(tput setaf 2)
     TERMINUS='\$'
 fi
-BOLD=$(tput bold)
+#BOLD=$(tput bold)
 RESET=$(tput sgr0)
 #PS1='\[$VIOLET\]$(date +%Y.%m.%d.%H:%M:%S) \[$RESET\]\[$RED\]\u\[$RESET\]@\[$GREEN\]\h\[$RESET\]:\[$BLUE\]\w\[$RESET\] \[$ORANGE\]$TERMINUS\[$RESET\] '
-PS1='\[$VIOLET\]\w\[$RESET\] \[$ORANGE\]$TERMINUS\[$RESET\] '
+PS1='\[$BASE0\]$(date +%Y.%m.%d.%H:%M:%S)\[$RESET\] \[$VIOLET\]\w\[$RESET\] \[$ORANGE\]$TERMINUS\[$RESET\] '
+
+#PS1='\[$VIOLET\]\w\[$RESET\] \[$ORANGE\]$TERMINUS\[$RESET\] '
 
 # History control
 # incompatibe with /etc/bashrc_Apple_Terminal session saving stuff
@@ -107,7 +110,7 @@ export HISTSIZE=100000
 export HISTTIMEFORMAT="%Y.%m.%d.%H:%M:%S "
 # histfile per host for when my homedir was an nfs share that moves round
 # or otherwise synced/replicated like in workstation changes
-export HISTFILE="$HOME/.histories/$(echo "$MY_HOSTNAME" | tr '[:upper:]' '[:lower:]')"
+export HISTFILE="$HOME/.histories/${MY_HOSTNAME,,}"
 
 # Key Bindings
 ## make up and down arrows do Ctrl-R like searching based on what is partially typed
@@ -115,9 +118,7 @@ bind '"\e[A": history-search-backward'
 bind '"\e[B": history-search-forward'
 
 # include pkgsrc bash-completion if installed
-if [ -r /opt/pkg/share/bash-completion/bash_completion ]; then
-    . /opt/pkg/share/bash-completion/bash_completion
-fi
+[[ -r /opt/pkg/share/bash-completion/bash_completion ]] && source /opt/pkg/share/bash-completion/bash_completion
 
 # use less as my default pager with these settings
 export PAGER="less --ignore-case --line-numbers --hilite-unread --squeeze-blank-lines --LONG-PROMPT --tabs=3"
@@ -132,9 +133,9 @@ export RSYNC_RSH=ssh
 
 # color on for ls
 export CLICOLOR=1
+
+# add my keys to ssh-agent
 /usr/bin/ssh-add -K >/dev/null 2>&1 
-#source ~/.rvm/scripts/rvm
-#rvm use ruby-2.1-head
 
 DISKUTIL=/usr/sbin/diskutil
 HDIUTIL=/usr/bin/hdiutil
@@ -379,14 +380,35 @@ countdown() {
     printf '\r%s%s\n' "$(tput el)" "$outro"
 }
 
+# automated signon to 1 password
+# prereq to have password in keychain
+# security add-generic-password -l "tritonproduct.1password.com" \
+#                               -a "michael.hicks@joyent.com" \
+#                               -s "tritonproduct.1password.com" \
+#                               -T ""
+opsignon() {
+    eval "$(security find-generic-password \
+               -s tritonproduct.1password.com \
+               -w \
+               | op signin --account tritonproduct)"
+}    
+
 # Make bash check it's window size after a process completes to avoid
 # the funky line overwrap messy crap-fest
 shopt -s checkwinsize
 
 # to move non-portable and local only preferences into
-[[ -f ~/.profile.local ]] && source ~/.profile.local
+# shellcheck disable=SC1090
+[[ -f "$HOME/.profile.local" ]] && source "$HOME/.profile.local"
 
 echo "Get to work eh?   Its time to work you hoser"
 
+# Setting PATH for Python 3.10
+# The original version is saved in .profile.pysave
+export PATH="/Library/Frameworks/Python.framework/Versions/3.10/bin:${PATH}"
+
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
+
+# shellcheck disable=SC1090
+[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"

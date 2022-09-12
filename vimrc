@@ -146,16 +146,16 @@ let syntastic_check_on_open = 1
 let syntastic_check_on_wq = 0
 let syntastic_sh_shellcheck_args = '-x'
 let syntastic_markdown_mdl_exec = "markdownlint"
-"let syntastic_markdown_mdl_args = "--config .markdownlintrc"
+let syntastic_markdown_mdl_args = "--config .markdownlintrc"
 
-function! FindConfig(prefix, what, where)
-    let cfg = findfile(a:what, escape(a:where, ' ') . ';')
-    return cfg !=# '' ? ' ' . a:prefix . ' ' . shellescape(cfg) : ''
-endfunction
-
-autocmd FileType markdown let g:syntastic_markdown_mdl_args =
-    \ get(g:, 'syntastic_markdown_mdl_args', '') .
-    \ FindConfig('--config', '.markdownlintrc', expand('<afile>:p:h', 1))
+" function! FindConfig(prefix, what, where)
+"     let cfg = findfile(a:what, escape(a:where, ' ') . ';')
+"     return cfg !=# '' ? ' ' . a:prefix . ' ' . shellescape(cfg) : ''
+" endfunction
+" 
+" autocmd FileType markdown let g:syntastic_markdown_mdl_args =
+"     \ get(g:, 'syntastic_markdown_mdl_args', '') .
+"     \ FindConfig('--config', '.markdownlintrc', expand('<afile>:p:h', 1))
 
 
 " no more search matches landing on the bottom, center matching line in my window
